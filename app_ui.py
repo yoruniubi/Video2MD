@@ -297,4 +297,20 @@ if __name__ == '__main__':
     if not os.path.exists('./embedding_model'):
         os.makedirs('./embedding_model')
         model_dir = snapshot_download(model_id = 'Jerry0/m3e-base',cache_dir= './embedding_model')
+    if not os.path.exists('./my_db'):
+        os.makedirs('./my_db')
+    if not os.path.exists('./filter_images'):
+        os.makedirs('./filter_images')
+    if not os.path.exists('./final_output'):
+        os.makedirs('./final_output')
+    if not os.path.exists('./transcript'):
+        os.makedirs('./transcript')
+    if not os.path.exists('./images'):
+        os.makedirs('./images')
+    if not os.path.exists('./output'):
+        os.makedirs('./output')
+    if not os.path.exists('./audio'):
+        os.makedirs('./audio')
+    if not os.path.exists('./videos'):
+        os.makedirs('./videos')
     main()
