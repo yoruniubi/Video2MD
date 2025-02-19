@@ -12,6 +12,7 @@
 
 ## 建议使用anaconda来建立虚拟环境  
 `conda create -n video2md python=3.10.8`
+
 `conda activate video2md`
 ## 安装依赖项
 `pip install -r requirements.txt`
