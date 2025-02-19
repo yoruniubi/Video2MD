@@ -1,0 +1,13 @@
+{
+    "file_path": {
+        "audio_path": "./audio/audio.wav",
+        "video_path": "./videos/video.mp4",
+        "video_after_path": "./videos/video_no_duplicates.mp4",
+        "output_path": "./output",
+        "images_path": "./images",
+        "filter_images_path": "./filter_images",
+        "transcript_path": "./transcript/transcript.txt",
+        "db_path":"./my_db"
+    },
+    "api_key": "your_api_key"
+}

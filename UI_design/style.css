@@ -1,0 +1,340 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f9;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    display: flex;
+}
+
+.left-column {
+    width: 30%;
+    padding-right: 20px;
+    border-right: 1px solid #ddd;
+}
+
+.right-column {
+    width: 70%;
+    padding-left: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+.upload-area {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+label {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+label:hover {
+    background-color: #0056b3;
+    transition: background-color 0.3s ease-in-out;
+    cursor: pointer;
+    border: none;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.progress-bar {
+    display: block;
+    width: 100%;
+    height: 20px;
+    background-color: #e0e0df;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    width: 0;
+    background-color: #76c7c0;
+    transition: width 0.3s ease-in-out;
+}
+
+.content-display {
+    margin-bottom: 20px;
+    display: none;
+    flex-direction: column;
+}
+
+#markdown-output {
+    min-height: 300px;
+    max-height: 600px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: auto;
+    padding: 10px;
+    background-color: white;
+}
+
+#markdown-output img {
+    max-width: 100%;
+    height: auto; 
+    display: block; 
+    margin: 10px 0; 
+}
+
+.knowledge-points-section {
+    margin-top: 20px;
+    display: none; /* Initially hidden */
+}
+
+.knowledge-points-section .input-section {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#knowledge-points-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    resize: vertical;
+}
+
+#ask-button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#ask-button:hover {
+    background-color: #45a049;
+}
+
+.knowledge-points-section .output-section {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #fff;
+}
+
+#knowledge-points-list {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.folder-management {
+    margin-bottom: 20px;
+}
+
+.folder-management h3 {
+    margin-top: 0;
+}
+
+.folder-management button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.folder-management button:hover {
+    background-color: #0056b3;
+}
+
+.folder-management p {
+    margin-top: 10px;
+    color: #555;
+}
+
+.folder-management #folder-list {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 10px;
+}
+
+.folder-management #folder-list li {
+    background-color: #f9f9f9;
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: default;
+}
+
+.folder-management #folder-list li:hover {
+    background-color: #f1f1f1;
+}
+
+.return-button {
+    display: block;
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #dc3545;
+    color: white;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.return-button:hover {
+    background-color: #c82333;
+}
+
+.save-button {
+    display: none;
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.save-button:hover {
+    background-color: #218838;
+}
+.folder-item {
+    position: relative;
+    padding: 10px 40px 10px 10px; /* 确保删除按钮不与文件夹名称重叠 */
+    margin: 5px 0;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.15s ease; /* 添加平滑过渡效果 */
+}
+.folder-selected {
+    transform: translateY(-2px); /* 漂浮效果 */
+    box-shadow: 0 4px 6px rgb(11 11 11 / 63%); /* 阴影效果 */
+    background-color: #e0e0e0; /* 变深的颜色 */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* 平滑过渡 */
+}
+
+.folder-delete {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15); /* 添加阴影效果 */
+    transition: transform 0.15s ease; /* 添加平滑过渡效果 */
+}
+
+.folder-delete:hover {
+    transform: translateY(-50%) scale(1.1); /* 鼠标悬停时放大 */
+}
+.file-controls {
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.file-controls button {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.file-controls button:hover {
+    background-color: #45a049;
+}
+
+.file-controls button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+.loading-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    font-weight: bold;
+    color: #1a1a1a;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.loading-animation p::after {
+    content: '';
+    display: inline-block;
+    height: 1em;
+    width: 1em;
+    border-radius: 50%;
+    margin-left: 0.5em;
+    background-color: #4caf50;
+    animation: pulse 1.5s infinite cubic-bezier(0.455, 0.03, 0.515, 0.955);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+.file-delete {
+    position: relative;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    transition: transform 0.15s ease;
+    left:132px;
+}
+
+.file-delete:hover {
+    transform: translateY(-50%) scale(1.1);
+}

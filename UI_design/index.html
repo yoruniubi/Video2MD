@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video to Markdown Converter with RAG</title>
+    <link rel="stylesheet" href="http://localhost:5000/style.css"></link>
+    <link rel="icon" href="./logo.ico" type="image/x-icon">
+</head>
+<body>
+<div class="container">
+    <div class="left-column">
+        <div class="folder-management">
+            <h3>Folder Management</h3>
+            <p>Select or change the folder where videos are stored:</p>
+            <button id="create-folder">Create Folder</button>
+            <p id="selected-folder-path"></p>
+            <h4>Folders:</h4>
+            <ul id="folder-list"></ul>
+        </div>
+    </div>
+    <div class="right-column">
+        <h1>Video to Markdown Converter with RAG</h1>
+        <div class="upload-area" id="video-upload-area">
+            <label for="video-upload">Upload Video</label>
+            <input type="file" id="video-upload" accept="video/*">
+        </div>
+        <div class="progress-bar" id ="progress-bar">
+            <div class="progress-bar-fill"></div>
+        </div>
+        <div class="content-display">
+            <div id="markdown-output" class="markdown-output"></div>
+        </div>
+        <div class="knowledge-points-section">
+            <div class="input-section">
+                <textarea id="knowledge-points-input" placeholder="Ask something..."></textarea>
+                <button id="ask-button">Ask</button>
+            </div>
+            <div class="output-section">
+                <ul class="knowledge-points" id="knowledge-points-list"></ul>
+            </div>
+        </div>
+        <button class="save-button" id="save-md">Save Markdown File</button>
+        <button class="return-button" id="return-button" style="display: none;">Return to Upload Video</button>
+    </div>
+</div>
+<script src="http://localhost:5000/marked.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 全局变量
+    let currentFolder = '';
+    let currentFiles = [];
+    let currentFileIndex = 0;
+    let folderSelected = false; 
+    // 加载config.json文件
+    fetch('/configs/config.json')
+        .then(response => response.json())
+        .then(config => {
+            const filePaths = config.file_path;
+            function updateProgressBar(value) {
+                document.querySelector('.progress-bar-fill').style.width = value + '%';
+            }
+            updateFolderList();
+            // 统一的视频上传处理逻辑
+            document.getElementById('video-upload').addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    try {
+                        console.log("正在初始化")
+                        pywebview.api.initialize(filePaths);
+                        console.log("初始化完成")
+                        // 显示进度条并隐藏内容区域和返回按钮
+                        document.querySelector('.content-display').style.display = 'block';
+                        document.getElementById('markdown-output').innerHTML = '<div class="loading-animation">正在生成markdown文件...⏳</div>';
+                        document.querySelector('.knowledge-points-section').style.display = 'none';
+                        document.getElementById('return-button').style.display = 'none';
+
+                        // 上传视频到后端
+                        const formData = new FormData();
+                        formData.append('video', file);
+
+                        const uploadResponse = await fetch('/api/upload-video', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        const uploadData = await uploadResponse.json();
+                        if (uploadData.message === 'Video uploaded and renamed successfully.') {
+                            console.log('视频上传成功，开始处理视频...');
+
+                            updateProgressBar(10);
+                            await pywebview.api.remove_same_frames(filePaths.video_path, filePaths.video_after_path);
+                            updateProgressBar(30);
+                            
+                            await generate_transcript();
+                            updateProgressBar(60);
+
+                            await export_images();
+                            updateProgressBar(70);
+                            
+                            await export_main_md();
+                            updateProgressBar(90);
+                            
+                            await display_md();
+                            updateProgressBar(100);
+                            // 显示内容区域和返回按钮
+                            document.querySelector('.content-display').style.display = 'block';
+                            document.querySelector('.knowledge-points-section').style.display = 'block';
+                            document.getElementById('return-button').style.display = 'block';
+                            document.getElementById('video-upload-area').style.display = 'none';
+                            document.getElementById('progress-bar').style.display = 'none';
+                            document.getElementById('save-md').style.display = 'block';
+                        }
+                    } catch (error) {
+                        console.error('视频上传和处理时出错:', error);
+                        updateProgressBar(0);
+                    }
+                }
+            });
+
+            // 生成转录
+            async function generate_transcript() {
+                try {
+                    await pywebview.api.generate_transcript(filePaths.video_path, filePaths.audio_path, filePaths.transcript_path);
+                    console.log('转录完成');
+                } catch (err) {
+                    console.error('生成转录时出错:', err);
+                    throw err; // 向上传流程抛出错误
+                }
+            }
+
+            // 导出图片
+            async function export_images() {
+                try {
+                    await pywebview.api.export_images();
+                    console.log('图片导出完成');
+                } catch (err) {
+                    console.error('导出图片时出错:', err);
+                    throw err;
+                }
+            }
+
+            // 导出Markdown
+            async function export_main_md() {
+                try {
+                    await pywebview.api.export_main_md(filePaths.filter_images_path, filePaths.transcript_path, filePaths.output_path);
+                    console.log('Markdown导出完成');
+                } catch (err) {
+                    console.error('导出Markdown时出错:', err);
+                    throw err;
+                }
+            }
+
+            // 生成时显示Markdown
+            async function display_md() {
+                try {
+                    const markdownFiles = await pywebview.api.read_md_files(filePaths.output_path);
+                    const firstMdFile = Object.values(markdownFiles)[0];
+                    const htmlContent = marked(firstMdFile);
+                    // 隐藏加载动画，显示内容
+                    document.getElementById('markdown-output').innerHTML = htmlContent;
+                } catch (err) {
+                    console.error('读取并显示_MD_文件时出错:', err);
+                    throw err;
+                }
+            }
+            document.getElementById('ask-button').addEventListener('click', async () => {
+                const userPrompt = document.getElementById('knowledge-points-input').value;
+                if (!userPrompt.trim()) {
+                    alert('请输入问题！');
+                    return;
+                }
+
+                try {
+                    // 显示加载动画
+                    const loadingArea = document.createElement('div');
+                    loadingArea.classList.add('loading-animation');
+                    loadingArea.innerHTML = '<p>正在生成回答... 🔄</p>'; // 可以用更复杂的动画替换
+                    document.getElementById('knowledge-points-list').innerHTML = ''; // 清空结果
+                    document.getElementById('knowledge-points-list').appendChild(loadingArea);
+
+                    const knowledgePoints = await pywebview.api.RAG_part(userPrompt);
+
+                    // 移除加载动画
+                    document.getElementById('knowledge-points-list').innerHTML = knowledgePoints;
+                } catch (err) {
+                    console.error('获取知识点时出错:', err);
+                }
+            });
+
+
+            async function fetchFolders() {
+                const response = await fetch('/api/list-folders');
+                const folders = await response.json();
+                console.log('Fetched folders:', folders); // 检查返回值的结构
+                return folders.folders; // 假设后端返回的是 { folders: [...] }
+            }
+
+            // 更新文件夹列表
+            async function updateFolderList() {
+                const folderList = await fetchFolders();
+                const folderContainer = document.getElementById('folder-list');
+                folderContainer.innerHTML = '';
+
+                folderList.forEach(folder => {
+                    // 创建文件夹项
+                    const li = document.createElement('li');
+                    li.classList.add('folder-item');
+                    li.dataset.folderName = folder; // 保存文件夹名称
+                    li.addEventListener('click', () => {
+                        selectFolder(folder); // 点击文件夹时调用函数
+                    });
+
+                    // 文件夹名称
+                    const folderName = document.createElement('span');
+                    folderName.textContent = folder;
+                    li.appendChild(folderName);
+
+                    // 删除按钮
+                    const deleteButton = document.createElement('button');
+                    deleteButton.classList.add('folder-delete');
+                    deleteButton.textContent = '×';
+                    deleteButton.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止事件冒泡，避免点击按钮时触发文件夹点击事件
+                        deleteFolder(folder); // 删除文件夹
+                    });
+                    li.appendChild(deleteButton);
+
+                    folderContainer.appendChild(li);
+                });
+            }
+
+            // 创建文件夹
+            document.getElementById('create-folder').addEventListener('click', async () => {
+                try {
+                    // 弹出提示框供用户输入文件夹名称
+                    const folderName = prompt("请输入新文件夹的名称:", "");
+                    if (!folderName) {
+                        console.log('未输入文件夹名称');
+                        return; // 如果用户取消输入或者没有输入内容，则返回
+                    }
+
+                    // 发送请求到Flask API
+                    const response = await fetch('/api/create-folder', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ folderName })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('文件夹创建成功: ' + result.message); // 使用alert弹出消息框
+                        console.log('文件夹创建成功:', result.message);
+                    } else {
+                        alert('文件夹创建失败: ' + result.message); // 使用alert弹出错误消息框
+                        console.error('文件夹创建失败:', result.message);
+                    }
+                } catch (err) {
+                    alert('创建文件夹时出错: ' + err.message); // 使用alert弹出错误消息框
+                    console.error('创建文件夹时出错:', err);
+                }
+                updateFolderList();
+            });
+            // 删除文件夹
+            async function deleteFolder(folderName) {
+                try {
+                    const confirmation = confirm(`Are you sure you want to delete "${folderName}"?`); // 确认删除
+                    if (!confirmation) return;
+
+                    // 调用后端 API 删除文件夹
+                    const response = await fetch('/api/delete-folder', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ folderName })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Folder deleted successfully!'); // 删除成功
+                        updateFolderList(); // 刷新文件夹列表
+                    } else {
+                        alert('Failed to delete folder: ' + result.message); // 删除失败
+                    }
+                } catch (err) {
+                    alert('Delete folder failed: ' + err.message); // 删除失败
+                }
+            }
+            async function loadMDFile(filePath) {
+                try {
+                    const response = await pywebview.api.read_md_files(filePath);
+                    console.log('filePath:', filePath);
+                    console.log('response:', response);
+
+                    // 提取文件名
+                    const fileName = Object.keys(response)[0]; // 获取第一个键（文件名）
+                    const mdContent = response[fileName]; // 使用文件名作为键获取内容
+
+                    console.log('fileName:', fileName);
+                    console.log('mdContent:', mdContent);
+
+                    if (!mdContent) {
+                        throw new Error('No content found for the file');
+                    }
+
+                    const htmlContent = marked(mdContent);
+
+                    document.querySelector('.content-display').style.display = 'block';
+                    document.querySelector('.knowledge-points-section').style.display = 'block';
+                    document.getElementById('return-button').style.display = 'block';
+                    document.getElementById('video-upload-area').style.display = 'none';
+                    document.getElementById('progress-bar').style.display = 'none';
+                    document.getElementById('save-md').style.display = 'block';
+                    document.getElementById('markdown-output').innerHTML = htmlContent;
+                } catch (err) {
+                    alert('读取 Markdown 文件时出错: ' + err.message);
+                }
+            }
+            // 在 selectFolder 函数中动态生成 MD 文件列表
+            async function selectFolder(folderName) {
+                // 获取所有文件夹项
+                const folderItems = document.querySelectorAll('.folder-item');
+                
+                // 移除所有文件夹项的 "folder-selected" 类
+                folderItems.forEach(item => item.classList.remove('folder-selected'));
+
+                // 获取当前点击的文件夹项
+                const clickedFolder = document.querySelector(`.folder-item[data-folder-name="${folderName}"]`);
+                
+                // 如果当前文件夹已展开，则收起
+                if (currentFolder === folderName) {
+                    // 收起文件夹，隐藏内容
+                    clickedFolder.classList.remove('folder-selected');
+                    currentFolder = '';
+                    currentFiles = [];
+                    currentFileIndex = -1;
+                    document.querySelector('.content-display').style.display = 'none';
+                    document.querySelector('.knowledge-points-section').style.display = 'none';
+                    document.getElementById('return-button').style.display = 'none';
+                    document.getElementById('video-upload-area').style.display = 'block';
+                    document.getElementById('progress-bar').style.display = 'block';
+                    document.getElementById('video-upload').value = ''; // 清空文件输入
+                    // 清空进度条
+                    updateProgressBar(0);
+                    document.getElementById('save-md').style.display = 'none';
+
+                    // 清除之前生成的 MD 文件列表
+                    const previousMDLists = document.querySelectorAll('.md-list');
+                    previousMDLists.forEach(list => list.remove());
+                } else {
+                    // 展开文件夹，显示内容
+                    clickedFolder.classList.add('folder-selected');
+                    
+                    // 清除之前生成的 MD 文件列表
+                    const previousMDLists = document.querySelectorAll('.md-list');
+                    previousMDLists.forEach(list => list.remove());
+
+                    // 更新当前文件夹
+                    currentFolder = folderName;
+
+                    try {
+                        // 调用后端 API 获取文件夹中的 MD 文件列表
+                        const response = await fetch(`/api/list-folders`);
+                        const result = await response.json();
+                        const mdFiles = result.files[currentFolder] || [];
+
+                        console.log('MD Files:', mdFiles);
+
+                        // 动态生成 MD 文件列表
+                        const mdListContainer = document.createElement('div');
+                        mdListContainer.classList.add('md-list'); // 添加类名以便后续清除
+
+                        mdFiles.forEach(file => {
+                            const mdItem = document.createElement('li');
+                            mdItem.classList.add('md-item');
+                            mdItem.textContent = file;
+
+                            // 删除按钮
+                            const deleteButton = document.createElement('button');
+                            deleteButton.classList.add('file-delete');
+                            deleteButton.textContent = '×';
+                            deleteButton.addEventListener('click', (e) => {
+                                e.stopPropagation(); // 阻止事件冒泡
+                                deleteFile(folderName, file); // 删除文件
+                            });
+                            mdItem.appendChild(deleteButton);
+
+                            mdItem.addEventListener('click', () => {
+                                const filePath = `${'./final_output'}/${currentFolder}/${file}`;
+                                loadMDFile(filePath);
+                            });
+
+                            mdListContainer.appendChild(mdItem);
+                        });
+
+                        const folderContainer = document.getElementById('folder-list');
+                        folderContainer.insertBefore(mdListContainer, clickedFolder.nextSibling);
+                    } catch (err) {
+                        console.error('Error selecting folder: ' + err.message);
+                    }
+                }
+            }
+
+            async function deleteFile(folderName, fileName) {
+                try {
+                    const confirmation = confirm(`Are you sure you want to delete "${fileName}"?`); // 确认删除
+                    if (!confirmation) return;
+
+                    // 调用后端 API 删除文件
+                    const response = await fetch('/api/delete-file', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ folderName, fileName })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('File deleted successfully!'); // 删除成功
+                        updateFolderList(); // 刷新文件夹列表
+                    } else {
+                        alert('Failed to delete file: ' + result.message); // 删除失败
+                    }
+                } catch (err) {
+                    alert('Delete file failed: ' + err.message); // 删除失败
+                }
+            }
+
+            document.getElementById('save-md').addEventListener('click', async () => {
+                try {
+                    // 获取整个HTML内容，包括图片
+                    const htmlContent = document.getElementById('markdown-output').innerHTML;
+
+                    // 使用DOMParser来解析字符串为DOM对象，以便进一步操作
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(htmlContent, 'text/html');
+                    
+                    // 添加图片嵌入功能
+                    const images = Array.from(doc.querySelectorAll('img'));
+                    await Promise.all(images.map(img => new Promise((resolve, reject) => {
+                        const imageUrl = img.src;
+                        fetch(imageUrl)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`Failed to fetch image ${imageUrl}: ${response.statusText}`);
+                                }
+                                return response.blob();
+                            })
+                            .then(blob => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    const base64Data = reader.result.split(',')[1];
+                                    const markdownImgSyntax = `[${img.alt}](data:${blob.type};base64,${base64Data})`;
+                                    img.replaceWith(document.createTextNode(markdownImgSyntax));
+                                    resolve(); // 图片处理完毕，解决Promise
+                                };
+                                reader.readAsDataURL(blob);
+                            })
+                            .catch(error => {
+                                console.error(`Error processing image ${imageUrl}:`, error);
+                                reject(error); // 处理错误
+                            });
+                    })));
+
+                    // 移除剩余的所有HTML标签，仅保留文本和已转换的Markdown图片语法
+                    const finalMdContent = doc.body.textContent || doc.body.innerText;
+
+                    // 获取当前选中的目录和文件名
+                    const folderName = currentFolder; // 确保currentFolder变量已经定义
+                    const fileName = prompt("请输入文件名称:", "");
+
+                    if (!folderName || !fileName) {
+                        alert('请输入文件夹名称和文件名称');
+                        return;
+                    }
+
+                    // 调用后端API保存Markdown文件
+                    const response = await fetch('/api/save-md', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            mdContent: finalMdContent,
+                            folderName: folderName,
+                            fileName: fileName.replace(/\s+/g, '_') // 替换空格为下划线
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('文件保存成功！');
+                    } else {
+                        alert('文件保存失败:' + result.message);
+                    }
+                } catch (err) {
+                    alert('文件保存时出错:' + err.message);
+                }
+            });
+            // 返回按钮功能
+            document.getElementById('return-button').addEventListener('click', () => {
+                document.querySelector('.content-display').style.display = 'none';
+                document.querySelector('.knowledge-points-section').style.display = 'none';
+                document.getElementById('return-button').style.display = 'none';
+                document.getElementById('video-upload-area').style.display = 'block';
+                document.getElementById('progress-bar').style.display = 'block';
+                document.getElementById('video-upload').value = ''; // 清空文件输入
+                // 清空进度条
+                updateProgressBar(0)
+                document.getElementById('save-md').style.display = 'none';
+                const clickedFolder = document.querySelector(`.folder-item`);
+                clickedFolder.classList.remove('folder-selected');
+                document.querySelectorAll('.md-list').forEach(list => list.remove());
+                currentFolder = '';
+            });
+        })
+        .catch(error => console.error('无法加载配置文件:', error));
+});
+</script>
+</body>
+</html>
