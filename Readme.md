@@ -23,7 +23,5 @@
 # 温馨提示 #
 如果感觉效果不好，可以替换更好的模型
 修改位于**clip_part.py**和**RAG_part.py**中的函数
-修改**client.chat.completions.create**的
-
-**model** 参数 
+修改**client.chat.completions.create**的**model** 参数 
 
