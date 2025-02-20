@@ -461,7 +461,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
                                     const base64Data = reader.result.split(',')[1];
-                                    const markdownImgSyntax = `[${img.alt}](data:${blob.type};base64,${base64Data})`;
+                                    const markdownImgSyntax = `![${img.alt}](data:${blob.type};base64,${base64Data})`;
                                     img.replaceWith(document.createTextNode(markdownImgSyntax));
                                     resolve(); // 图片处理完毕，解决Promise
                                 };
