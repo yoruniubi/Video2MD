@@ -318,8 +318,6 @@ input[type="file"] {
 .file-delete {
     position: relative;
     top: 50%;
-    right: 10px;
-    transform: translateY(-50%);
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -332,9 +330,25 @@ input[type="file"] {
     align-items: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     transition: transform 0.15s ease;
-    left:132px;
 }
 
 .file-delete:hover {
-    transform: translateY(-50%) scale(1.1);
+    transform: translateY(-10%) scale(1.1);
+}
+.md-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.md-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.md-list li:last-child {
+    border-bottom: none;
 }
