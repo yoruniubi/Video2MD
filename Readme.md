@@ -4,7 +4,7 @@
 
 # 基本使用 #
 ## 首先 git clone 项目
-git clone `https://github.com/yoruniubi/Video2MD.git`
+`git clone https://github.com/yoruniubi/Video2MD.git`
 ## 然后配置api_key
 然后将自己的api_key填入**config.json**文件中
 
